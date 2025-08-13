@@ -40,7 +40,12 @@ IPV6_PREFIX = "2401:3660:0:c10c:"  # ⚠️ Thay bằng prefix IPv6 thực tế
 NET_INTERFACE = "eth0"
 
 CONFIG_PATH = "/root/3proxy/bin/3proxy.cfg"
-
+API_KEY = os.environ.get("API_KEY", "2222")
+PROXY_USER = os.environ.get("PROXY_USER", "PROXY_USER")
+PROXY_PASS = os.environ.get("PROXY_PASS", "PROXY_PASS")
+ENABLE_AUTH = os.environ.get("ENABLE_AUTH", "true").lower() in ("1","true","yes","on")
+FLASK_HOST = os.environ.get("FLASK_HOST", "0.0.0.0")
+FLASK_PORT = int(os.environ.get("FLASK_PORT", "5555"))
 
 running_proxies = {}  # {port: ipv6}
 
@@ -193,15 +198,25 @@ def kill_proxy(port):
     os.system(cmd)
 
 def write_config(port, PROXY_USER, PROXY_PASS, ipv6):
-    config = f"""
+    if ENABLE_AUTH:
+        config = f"""
 flush
 nscache 65536
 timeouts 1 5 30 60 180 1800 15 60
-# users {PROXY_USER}:CL:{PROXY_PASS}
-# auth strong
-# allow {PROXY_USER}
+users {PROXY_USER}:CL:{PROXY_PASS}
+auth strong
+allow {PROXY_USER}
 allow *
 socks -6 -n -a -p{port} -i{BASE_IPv4} -e{ipv6}
+"""
+    else:
+        config = f"""
+flush
+nscache 65536
+timeouts 1 5 30 60 180 1800 15 60
+auth none
+allow *
+socks -6 -n -p{port} -i{BASE_IPv4} -e{ipv6}
 """
     #proxy -6 -n -a -p{port} -i{BASE_IPv4} -e{ipv6}
     conf_file = f"/root/3proxy/bin/3proxy_{port}.cfg"
@@ -233,15 +248,14 @@ def close_port():
     apikey = request.args.get("apikey", type=str)
     if not port:
         return jsonify({"error": "Missing port"}), 400
-    if not apikey or apikey != "2222": 
-        return jsonify({"error": "Missing apikey: " + apikey}), 400        
+    if not apikey or apikey != API_KEY:
+        return jsonify({"error": "Missing apikey: " + str(apikey)}), 400        
     kill_proxy(port)    
     remove_ipv6_port(port)
     return "close_ok"
 
-PROXY_USER = "PROXY_USER"
-PROXY_PASS = "PROXY_PASS"
-
+# Credentials are configured via environment variables above
+# PROXY_USER and PROXY_PASS default to placeholders when not provided
 
 
 @app.route('/changeipv6/')
@@ -250,13 +264,8 @@ def change_proxy():
     apikey = request.args.get("apikey", type=str)
     if not port:
         return jsonify({"error": "Missing port"}), 400
-    if not apikey or apikey != "2222": 
-        return jsonify({"error": "Missing apikey: " + apikey}), 400    
-    # PROXY_USER = ''.join(random.choices(string.ascii_letters, k=5))
-    # PROXY_PASS = ''.join(random.choices(string.ascii_letters, k=5))
-
-
-
+    if not apikey or apikey != API_KEY: 
+        return jsonify({"error": "Missing apikey: " + str(apikey)}), 400    
 
     kill_proxy(port)
     
@@ -267,8 +276,10 @@ def change_proxy():
     print(f"Generated new IPv6: {ipv6}")
     assign_ipv6(ipv6)
     start_proxy(port, PROXY_USER,PROXY_PASS, ipv6)
-    # running_proxies[port] = ipv6
-    return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
+    if ENABLE_AUTH:
+        return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
+    else:
+        return f"socks5://{BASE_IPv4}:{port}|{ipv6}"
 
 @app.route('/getipv6/')
 def getipv6():
@@ -276,10 +287,13 @@ def getipv6():
     apikey = request.args.get("apikey", type=str)
     if not port:
         return jsonify({"error": "Missing port"}), 400
-    if not apikey or apikey != "2222": 
-        return jsonify({"error": "Missing apikey: " + apikey}), 400    
+    if not apikey or apikey != API_KEY: 
+        return jsonify({"error": "Missing apikey: " + str(apikey)}), 400    
     ipv6 = read_file(f"/root/3proxy/bin/3proxy_{port}_log.txt")    
-    return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
+    if ENABLE_AUTH:
+        return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
+    else:
+        return f"socks5://{BASE_IPv4}:{port}|{ipv6}"
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5555)
+    app.run(host=FLASK_HOST, port=FLASK_PORT)
