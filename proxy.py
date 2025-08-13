@@ -47,6 +47,12 @@ ENABLE_AUTH = os.environ.get("ENABLE_AUTH", "true").lower() in ("1","true","yes"
 FLASK_HOST = os.environ.get("FLASK_HOST", "0.0.0.0")
 FLASK_PORT = int(os.environ.get("FLASK_PORT", "5555"))
 
+def is_auth_enabled():
+    env_val = os.environ.get("ENABLE_AUTH")
+    if env_val is not None:
+        return env_val.lower() in ("1", "true", "yes", "on")
+    return bool(os.environ.get("PROXY_USER")) and bool(os.environ.get("PROXY_PASS"))
+
 running_proxies = {}  # {port: ipv6}
 
 
@@ -198,7 +204,7 @@ def kill_proxy(port):
     os.system(cmd)
 
 def write_config(port, PROXY_USER, PROXY_PASS, ipv6):
-    if ENABLE_AUTH:
+    if is_auth_enabled():
         config = f"""
 flush
 nscache 65536
@@ -276,7 +282,7 @@ def change_proxy():
     print(f"Generated new IPv6: {ipv6}")
     assign_ipv6(ipv6)
     start_proxy(port, PROXY_USER,PROXY_PASS, ipv6)
-    if ENABLE_AUTH:
+    if is_auth_enabled():
         return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
     else:
         return f"socks5://{BASE_IPv4}:{port}|{ipv6}"
@@ -290,7 +296,7 @@ def getipv6():
     if not apikey or apikey != API_KEY: 
         return jsonify({"error": "Missing apikey: " + str(apikey)}), 400    
     ipv6 = read_file(f"/root/3proxy/bin/3proxy_{port}_log.txt")    
-    if ENABLE_AUTH:
+    if is_auth_enabled():
         return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
     else:
         return f"socks5://{BASE_IPv4}:{port}|{ipv6}"
