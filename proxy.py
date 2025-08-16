@@ -282,6 +282,8 @@ def change_proxy():
     print(f"Generated new IPv6: {ipv6}")
     assign_ipv6(ipv6)
     start_proxy(port, PROXY_USER,PROXY_PASS, ipv6)
+    print(f"is_auth_enabled: {is_auth_enabled()}")
+
     if is_auth_enabled():
         return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
     else:
