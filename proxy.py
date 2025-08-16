@@ -49,6 +49,7 @@ FLASK_PORT = int(os.environ.get("FLASK_PORT", "5555"))
 
 def is_auth_enabled():
     env_val = os.environ.get("ENABLE_AUTH")
+    print(f"env_val: {env_val}")
     if env_val is not None:
         return env_val.lower() in ("1", "true", "yes", "on")
     return bool(os.environ.get("PROXY_USER")) and bool(os.environ.get("PROXY_PASS"))
