@@ -25,7 +25,8 @@
 #sửa file: nano /root/3proxy/proxy.py
 #run file: sudo python3 /root/3proxy/proxy.py
 import os
-
+from dotenv import load_dotenv
+load_dotenv()
 import random
 import subprocess
 from flask import Flask, request, jsonify
