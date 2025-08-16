@@ -296,6 +296,7 @@ def getipv6():
     if not apikey or apikey != API_KEY: 
         return jsonify({"error": "Missing apikey: " + str(apikey)}), 400    
     ipv6 = read_file(f"/root/3proxy/bin/3proxy_{port}_log.txt")    
+    print(f"is_auth_enabled: {is_auth_enabled()}")
     if is_auth_enabled():
         return f"socks5://{BASE_IPv4}:{port}:{PROXY_USER}:{PROXY_PASS}|{ipv6}"
     else:
